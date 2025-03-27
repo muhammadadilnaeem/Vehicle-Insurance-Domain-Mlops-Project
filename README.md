@@ -222,6 +222,7 @@
     # Configure the logger
     configure_logger()
     ```
+    
 - Go to `src/exception/__init__.py` and write logging code in it:
 
     ```python
@@ -275,4 +276,168 @@
             return self.error_message
     ```
 
+#### ***Project Workflow***
 
+- We will update code in the following files in this sequence
+1. constant
+2. config_entity
+3. artifact_entity
+4. component
+5. pipeline
+6. app.py, demo.py
+
+
+### **6. Data Ingestion**
+
+- Before we work on "Data Ingestion" component >> Declare variables within constants. `__init__.py` file >> 
+- First we have data localy. We need to put it in to the mongodb. We will do this using `notebooks/mongodb_experiments.ipynb`.
+- Then we will pull this data from mongodb for our project.
+    - add code to `configuration/mongo_db_connections.py` file and - define the func for mondodb connection >> 
+    - Inside "data_access" folder, add code to `vehicle_data.py` that will use `mongo_db_connections.py` to connect with DB, fetch data in key-val format and transform that to df >>
+    - add code to `entity/config_entity.py` file till DataIngestionConfig class >>
+    - add code to entity.artifact_entity.py file till DataIngestionArtifact class >>
+    - add code to components.data_ingestion.py file >> add code to training pipeline >> 
+    - run demo.py (set mongodb connection url first, see next step)
+
+    - To setup the connection url open powershell terminal and run below command:
+    
+    - ***For Powershell***
+    ```bash
+    set: $env:MONGODB_URL = "mongodb url..."
+    check: echo $env:MONGODB_URL
+    ```
+
+### **7. Data Validation, Data Transformation & Model Trainer**
+
+- Complete the work on `utils.main_utils.py` and `config.schema.yaml` file (add entire info about dataset for data validation step).
+- Now work on the "Data Validation" component the way we did for Data Ingestion. (Workflow mentioned below)
+- Now work on the "Data Transformation" component the way we did in above step. (add estimator.py to entity folder)
+- Now work on the "Model Trainer" component the way we did in above step. (add class to estimator.py in entity folder)
+
+### **8. Model Evaluation & Push To AWS S3 Bucket**
+
+
+- Before moving to next component of Model Evaluation, some AWS services setup is needed:
+    * Login to AWS console.
+      * Keep region set as - us-east-1
+      * Go to IAM >> Create new user (name: vehicle-proj)
+      * Attach policy >> select AdministratorAccess >> next >> create user
+      * Go to the user >> Security Credentials >> Access Keys >> Create access key
+      * Select CLI >> agree to condition >> next >> Create Access Key >> download csv file
+      * Set env variables with above csv values using below method:
+      ====================================================================================
+         >> Set env var from bash terminal: <<
+         export AWS_ACCESS_KEY_ID="AWS_ACCESS_KEY_ID"
+         export AWS_SECRET_ACCESS_KEY="AWS_SECRET_ACCESS_KEY"
+         >> Check env var from bash terminal: <<
+         echo $AWS_ACCESS_KEY_ID
+         echo $AWS_SECRET_ACCESS_KEY
+
+         >> Set env var from powershell terminal: <<
+         $env:AWS_ACCESS_KEY_ID="AWS_ACCESS_KEY_ID downloaded in csv"
+         $env:AWS_SECRET_ACCESS_KEY="AWS_SECRET_ACCESS_KEY downloaded in csv"
+         >> Check env var from powershell terminal: <<
+         echo $env:AWS_ACCESS_KEY_ID
+         echo $env:AWS_SECRET_ACCESS_KEY
+      ====================================================================================
+      * Now add the access key, secret key, region name to constants.__init__.py
+      * Add code to src.configuration.aws_connection.py file (To work with AWS S3 service)
+      * Ensure below info in constants.__init__.py file:
+            MODEL_EVALUATION_CHANGED_THRESHOLD_SCORE: float = 0.02
+            MODEL_BUCKET_NAME = "my-vehicle-mlopsproj"
+            MODEL_PUSHER_S3_KEY = "model-registry"
+      * Go to S3 service >> Create bucket >> Region: us-east-1 >> General purpose >>
+        Bucket Name: "my-vehicle-mlopsproj" >> uncheck: "Block all public access" and acknowledge >>
+        Hit Create Bucket
+      * Now inside "src.aws_storage" code needs to be added for the configurations needed to pull 
+        and push model from AWS S3 bucket. 
+      * Inside "entity" dir we will have an "s3_estimator.py" file containing all the func to pull/push
+        data from s3 bucket.
+
+### **9. Making Prediction With Best ML Model Using FastApi**
+
+- Create the code structure of "Prediction Pipeline" and setup your app.py. For this we will use `fastapi` framework.
+-  Add "static" and folder in such a way that `static/css/style.css`. 
+- "templates" dir to the project in such a way that `templates/vehicledata.html`.
+- Once you do this add code in app.py. 
+  - Run `app.py` with this command:
+    ```python
+    python app.py
+    ```
+
+  - Open this address on your browser to experiment with UI.
+    ```python
+    http://localhost:5000/
+    ```
+
+    - Use Following values as input:    
+        `
+        1  25  1  15  0 28711  152 239  1  0  1
+        `  
+### **9. Implementing CICD**
+
+
+Getting started with CI-CD process:
+  * Setup the dockerfile (mention files that needs to be dockerized) and .dockerignore (mention files that needs to be ignored by docker) files.
+  * Setup the .github\workflows dir and aws.yaml file within as `.github/workflows/`
+  * Go to AWS console and create a new IAM user exactly the way we did earlier or use the same
+
+  * Now create one `ECR repo to store/save docker image`:
+        AWS console >> Go to ECR >> Region: us-east-1 >> Hit create repository >>
+        repo name: `vehicleproj` >> hit create repository >> copy and keep uri
+  * Now create EC2 Ubuntu server >> AWS console >> EC2 >> Launch Instance >> name: `vehicledata-machine`
+    >> Image: Ubuntu >> AMI: Ubuntu Server 24.04 (free tier) >> Instance: T2 Medium (~chargeable-3.5rs/hr)
+        
+    >> create new key pair (name: proj1key) >> allow for https and http traffic >> storage: 30gb >> Launch
+    
+    >> Go to instance >> click on "Connect" >> Connect using EC2 Instance Connect 
+    
+    >> Connect (Terminal will be launched) 
+
+- Open EC2 and Install docker in EC2 Machine:
+    ### **Optinal**
+
+    ```python
+    sudo apt-get update -y
+    sudo apt-get upgrade -y
+    ```
+      
+    ### **Required (Because Docker is'nt there in our EC2 server - [docker --version])**
+
+    ```python
+    curl -fsSL https://get.docker.com -o get-docker.sh
+    sudo sh get-docker.sh
+    sudo usermod -aG docker ubuntu
+    newgrp docker
+    ```
+
+    - In order to verify if docker installed:
+    ```python
+    docker ps
+    ```  
+
+
+
+- Next step is to connect Github with EC2(Self hosted runner):
+
+  * select your project on Github >> go to settings >> Actions >> Runner >> New self hosted runner
+        
+     >> Select OS (Linux) >> Now step by step run all "Download" related commands on EC2 server 
+        >> run first "Configure" command (hit enter instead of setting a runner group, runner name: self-hosted)
+        >> enter any additional label (hit enter to skip) >> name of work folder (again hit enter)
+        >> Now run second "Configure" command (./run.sh) and runner will get connected to Github
+        >> To crosscheck, go back to Github and click on Runner and you will see runner state as "idle"
+        >> If you do ctrl+c on EC2 server then runner will shut then restart with "./run.sh"
+
+1.  Setup your Github secrets: (Github project>Settings>SecretandVariable>Actions>NewRepoSecret)
+      AWS_ACCESS_KEY_ID
+      AWS_SECRET_ACCESS_KEY
+      AWS_DEFAULT_REGION
+      ECR_REPO
+
+2.  CI-CD pipeline will be triggered at next commit and push.
+3.  Now we need to activate the 5000 port of our EC2 instance:
+      * Go to the instance > Security > Go to Security Groups > Edit inbound rules > add rule
+        > type: Custom TCP > Port range: 5080 > 0.0.0.0/0 > Save rules
+4.  Now paste the public ip address on the address bar +:5080 and your app will be launched.
+5.  You can also do model training on /training route
