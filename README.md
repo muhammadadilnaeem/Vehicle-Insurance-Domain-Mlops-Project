@@ -423,17 +423,26 @@ Getting started with CI-CD process:
   * select your project on Github >> go to settings >> Actions >> Runner >> New self hosted runner
         
      >> Select OS (Linux) >> Now step by step run all "Download" related commands on EC2 server 
-        >> run first "Configure" command (hit enter instead of setting a runner group, runner name: self-hosted)
-        >> enter any additional label (hit enter to skip) >> name of work folder (again hit enter)
-        >> Now run second "Configure" command (./run.sh) and runner will get connected to Github
-        >> To crosscheck, go back to Github and click on Runner and you will see runner state as "idle"
-        >> If you do ctrl+c on EC2 server then runner will shut then restart with "./run.sh"
+        
+    >> run first "Configure" command (hit enter instead of setting a runner group, runner name: self-hosted)
+        
+    >> enter any additional label (hit enter to skip) >> name of work folder (again hit enter)
+        
+    >> Now run second "Configure" command (./run.sh) and runner will get connected to Github
+        
+    >> To crosscheck, go back to Github and click on Runner and you will see runner state as "idle"
+        
+    >> If you do ctrl+c on EC2 server then runner will shut then restart with "./run.sh"
 
 1.  Setup your Github secrets: (Github project>Settings>SecretandVariable>Actions>NewRepoSecret)
-      AWS_ACCESS_KEY_ID
-      AWS_SECRET_ACCESS_KEY
-      AWS_DEFAULT_REGION
-      ECR_REPO
+    
+    AWS_ACCESS_KEY_ID
+    
+    AWS_SECRET_ACCESS_KEY
+    
+    AWS_DEFAULT_REGION
+    
+    ECR_REPO
 
 2.  CI-CD pipeline will be triggered at next commit and push.
 3.  Now we need to activate the 5000 port of our EC2 instance:
@@ -441,3 +450,25 @@ Getting started with CI-CD process:
         > type: Custom TCP > Port range: 5080 > 0.0.0.0/0 > Save rules
 4.  Now paste the public ip address on the address bar +:5080 and your app will be launched.
 5.  You can also do model training on /training route
+6.  (Optional) Now if you want your machine keep running 
+    ```python
+    cd ~/actions-runner
+    ```
+    - Set up the runner as a service:
+    ```python
+    sudo ./svc.sh install
+    ``` 
+
+    - Again start the service:
+    ```python
+    sudo ./svc.sh start
+    ``` 
+    
+    - To check status of the service:
+    ```python
+    sudo ./svc.sh status
+    ``` 
+
+- Now in order to stop the services first comment of content in `cicd.yaml`.
+
+- Then delete rest of the aws credentials as `IAM`, `ECR`, `EC2`.
